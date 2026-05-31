@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commex - Community Exchange</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74',
+                            400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c',
+                            800: '#9a3412', 900: '#7c2d12',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-20px)' }, },
+                        slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' }, },
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' }, },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3); }
+        .gradient-text { background: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .item-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .item-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2); }
+        .chat-bubble { position: relative; max-width: 80%; padding: 12px 16px; border-radius: 18px; animation: fadeIn 0.3s ease-out; }
+        .chat-bubble.sent { background: linear-gradient(135deg, #ea580c, #c2410c); color: white; border-bottom-right-radius: 4px; margin-left: auto; }
+        .chat-bubble.received { background: #f3f4f6; color: #1f2937; border-bottom-left-radius: 4px; }
+        .online-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; position: relative; }
+        .online-dot::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid #22c55e; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+        .membership-badge { background: linear-gradient(135deg, #f97316, #ea580c); color: white; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+        .typing-dots { display: inline-flex; gap: 4px; }
+        .typing-dots span { width: 6px; height: 6px; background: #9ca3af; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed w-full z-50 transition-all duration-300 glass border-b border-gray-200/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center cursor-pointer" onclick="showPage('home')">
+                    <div class="w-10 h-10 bg-gradient-to-br from-brand-500 to-amber-500 rounded-xl flex items-center justify-center text-white font-bold text-xl mr-3 shadow-lg">C</div>
+                    <span class="font-display font-bold text-2xl tracking-tight">Commex</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <button onclick="showPage('browse')" class="text-gray-600 hover:text-brand-600 font-medium transition-colors">Browse Items</button>
+                    <button onclick="showPage('donate')" class="text-gray-600 hover:text-brand-600 font-medium transition-colors">Start Donating</button>
+                    <button onclick="showPage('chat')" class="text-gray-600 hover:text-brand-600 font-medium transition-colors">Community Chat</button>
+                </div>
+                <div id="auth-buttons" class="flex items-center space-x-4">
+                    <div class="hidden md:flex items-center mr-2">
+                        <span class="membership-badge"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>$5/month</span>
+                    </div>
+                    <button onclick="toggleAuthModal()" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-full font-medium transition-all transform hover:scale-105 shadow-lg shadow-brand-500/30">Sign In</button>
+                </div>
+                <div id="user-menu" class="hidden items-center space-x-4">
+                    <div class="hidden md:flex items-center mr-2">
+                        <span class="membership-badge"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Member</span>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-white/50 px-4 py-2 rounded-full border border-gray-200">
+                        <div class="w-8 h-8 bg-gradient-to-br from-brand-400 to-amber-400 rounded-full flex items-center justify-center text-white font-bold text-sm"><span id="user-avatar">U</span></div>
+                        <span id="username-display" class="font-medium text-gray-700">User</span>
+                    </div>
+                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleAuthModal()"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 transform transition-all scale-100 animate-slide-up">
+                <div class="text-center mb-8">
+                    <h2 class="font-display text-3xl font-bold text-gray-900 mb-2">Welcome to Commex</h2>
+                    <p class="text-gray-500">Join our student community</p>
+                </div>
+                <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="auth-email" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all outline-none" placeholder="you@school.edu">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="auth-password" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all outline-none" placeholder="••••••••">
+                    </div>
+                    <div class="bg-brand-50 rounded-xl p-4 border border-brand-200">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-brand-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="text-sm text-brand-800">
+                                <p class="font-semibold mb-1">$5/month Membership</p>
+                                <p>Unlimited item exchanges, full chat access, and priority support. Cancel anytime.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-brand-500/30">Join for $5/month</button>
+                </form>
+                <div class="mt-6 text-center text-sm text-gray-500"><p>Demo: Use any email/password to sign in</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Home Page -->
+    <section id="page-home" class="min-h-screen pt-16">
+        <div class="relative overflow-hidden bg-gradient-to-br from-brand-50 via-white to-amber-50">
+            <div class="absolute inset-0 opacity-30">
+                <div class="absolute top-20 left-10 w-72 h-72 bg-brand-300 rounded-full mix-blend-multiply filter blur-xl animate-float"></div>
+                <div class="absolute top-40 right-10 w-72 h-72 bg-amber-300 rounded-full mix-blend-multiply filter blur-xl animate-float" style="animation-delay: 2s;"></div>
+                <div class="absolute -bottom-8 left-1/2 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl animate-float" style="animation-delay: 4s;"></div>
+            </div>
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
+                <div class="text-center max-w-3xl mx-auto">
+                    <div class="inline-flex items-center px-4 py-2 rounded-full bg-white/80 border border-brand-200 text-brand-700 text-sm font-medium mb-8 shadow-sm">
+                        <span class="flex h-2 w-2 rounded-full bg-brand-500 mr-2 animate-pulse"></span>Student-Powered Exchange
+                    </div>
+                    <h1 class="font-display text-5xl md:text-7xl font-bold text-gray-900 leading-tight mb-6">Share. Learn. <span class="gradient-text">Save.</span></h1>
+                    <p class="text-xl text-gray-600 mb-10 leading-relaxed">Join thousands of students exchanging textbooks, supplies, and gear. <span class="font-semibold text-brand-600">$5/month membership</span> for unlimited access to all items.</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button onclick="showPage('browse')" class="bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-brand-500/30 flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>Browse Items</button>
+                        <button onclick="showPage('donate')" class="bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-200 px-8 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>Start Donating</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="py-24 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid md:grid-cols-3 gap-12">
+                    <div class="group p-8 rounded-3xl bg-gray-50 hover:bg-brand-50 transition-all duration-300 border border-transparent hover:border-brand-200">
+                        <div class="w-14 h-14 bg-brand-100 rounded-2xl flex items-center justify-center text-brand-600 mb-6 group-hover:scale-110 transition-transform">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        </div>
+                        <h3 class="font-display text-xl font-bold mb-3">Textbooks & Notes</h3>
+                        <p class="text-gray-600">Share course materials, textbooks, and study notes. Save hundreds on expensive books every semester.</p>
+                    </div>
+                    <div class="group p-8 rounded-3xl bg-gray-50 hover:bg-amber-50 transition-all duration-300 border border-transparent hover:border-amber-200">
+                        <div class="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600 mb-6 group-hover:scale-110 transition-transform">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        </div>
+                        <h3 class="font-display text-xl font-bold mb-3">Chat & Study Groups</h3>
+                        <p class="text-gray-600">Connect with classmates, form study groups, and coordinate meetups on campus.</p>
+                    </div>
+                    <div class="group p-8 rounded-3xl bg-gray-50 hover:bg-yellow-50 transition-all duration-300 border border-transparent hover:border-yellow-200">
+                        <div class="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center text-yellow-600 mb-6 group-hover:scale-110 transition-transform">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h3 class="font-display text-xl font-bold mb-3">Campus Pickup</h3>
+                        <p class="text-gray-600">Meet safely at the library, student center, or dorm. You handle the exchange, we connect you.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="py-24 bg-gray-900 text-white relative overflow-hidden">
+            <div class="absolute inset-0 opacity-20">
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]"></div>
+            </div>
+            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="font-display text-4xl font-bold mb-4">Simple & Affordable</h2>
+                    <p class="text-gray-400 text-lg">$5/month membership. Unlimited exchanges. No per-item fees.</p>
+                </div>
+                <div class="grid md:grid-cols-4 gap-8">
+                    <div class="text-center"><div class="w-16 h-16 rounded-full bg-brand-500 flex items-center justify-center text-2xl font-bold mx-auto mb-4">1</div><h4 class="font-bold text-lg mb-2">Join</h4><p class="text-gray-400 text-sm">$5/month membership signup</p></div>
+                    <div class="text-center"><div class="w-16 h-16 rounded-full bg-brand-500 flex items-center justify-center text-2xl font-bold mx-auto mb-4">2</div><h4 class="font-bold text-lg mb-2">Browse</h4><p class="text-gray-400 text-sm">Find textbooks and supplies</p></div>
+                    <div class="text-center"><div class="w-16 h-16 rounded-full bg-brand-500 flex items-center justify-center text-2xl font-bold mx-auto mb-4">3</div><h4 class="font-bold text-lg mb-2">Connect</h4><p class="text-gray-400 text-sm">Chat and arrange pickup</p></div>
+                    <div class="text-center"><div class="w-16 h-16 rounded-full bg-brand-500 flex items-center justify-center text-2xl font-bold mx-auto mb-4">4</div><h4 class="font-bold text-lg mb-2">Exchange</h4><p class="text-gray-400 text-sm">Meet on campus and trade</p></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Browse Items Page -->
+    <section id="page-browse" class="min-h-screen pt-24 pb-12 hidden bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="font-display text-4xl font-bold text-gray-900 mb-2">Browse Items</h1>
+                    <p class="text-gray-600">Find textbooks, supplies, and gear for your classes</p>
+                </div>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <input type="text" id="search-input" placeholder="Search items..." oninput="filterItems()" class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none">
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <select id="category-filter" onchange="filterItems()" class="px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                        <option value="all">All Categories</option>
+                        <option value="textbooks">Textbooks</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="supplies">School Supplies</option>
+                        <option value="notes">Study Notes</option>
+                        <option value="dorm">Dorm & Living</option>
+                    </select>
+                </div>
+            </div>
+            <div id="items-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+        </div>
+    </section>
+
+    <!-- Item Detail Modal -->
+    <div id="item-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeItemModal()"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-slide-up">
+                <div id="item-detail-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Donate Page -->
+    <section id="page-donate" class="min-h-screen pt-24 pb-12 hidden bg-gray-50">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h1 class="font-display text-4xl font-bold text-gray-900 mb-4">Start Donating</h1>
+                <p class="text-gray-600 text-lg">List your textbooks, supplies, and gear for other students</p>
+            </div>
+            <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+                <form id="donate-form" onsubmit="handleDonate(event)" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Item Title</label>
+                        <input type="text" id="donate-title" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none" placeholder="e.g., Calculus 3rd Edition - Stewart">
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                            <select id="donate-category" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 outline-none">
+                                <option value="">Select category</option>
+                                <option value="textbooks">Textbooks</option>
+                                <option value="electronics">Electronics</option>
+                                <option value="supplies">School Supplies</option>
+                                <option value="notes">Study Notes</option>
+                                <option value="dorm">Dorm & Living</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Condition</label>
+                            <select id="donate-condition" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 outline-none">
+                                <option value="">Select condition</option>
+                                <option value="new">Like New</option>
+                                <option value="good">Good</option>
+                                <option value="fair">Fair - Some Wear</option>
+                                <option value="poor">Heavy Use - Still Usable</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Course/Subject (Optional)</label>
+                        <input type="text" id="donate-course" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none" placeholder="e.g., MATH 101, Biology, Chemistry">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="donate-desc" required rows="4" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none" placeholder="Describe your item, edition, ISBN, pickup location on campus, etc."></textarea>
+                    </div>
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-brand-400 transition-colors cursor-pointer bg-gray-50" onclick="alert('Photo upload simulated - in real app this would open file picker')">
+                        <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p class="text-gray-600 font-medium">Click to upload photos</p>
+                        <p class="text-gray-400 text-sm mt-1">or drag and drop</p>
+                    </div>
+                    <div class="bg-brand-50 rounded-xl p-4 border border-brand-200">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-brand-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="text-sm text-brand-800">
+                                <p class="font-semibold mb-1">Free for Members:</p>
+                                <p>Your $5/month membership covers all exchanges. Students will message you to arrange pickup on campus.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-brand-500/30">List Item for Students</button>
+                </form>
+            </div>
+            <div class="mt-8 text-center">
+                <p class="text-gray-600 mb-4">Want to discuss with other students first?</p>
+                <button onclick="showPage('chat')" class="inline-flex items-center gap-2 text-brand-600 font-semibold hover:text-brand-700 transition-colors">Join Community Chat<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chat Page -->
+    <section id="page-chat" class="min-h-screen pt-16 pb-0 hidden bg-gray-100">
+        <div class="h-[calc(100vh-4rem)] flex">
+            <!-- Sidebar -->
+            <div class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col">
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="font-display text-xl font-bold text-gray-900">Messages</h2>
+                    <p class="text-sm text-gray-500 mt-1">Study Groups & Direct Messages</p>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <div onclick="switchChat('community')" id="chat-community" class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors bg-brand-50 border-l-4 border-l-brand-500">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-400 to-amber-400 flex items-center justify-center text-white font-bold">#</div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900">Campus Hub</h3>
+                                <p class="text-sm text-gray-500 truncate" id="community-last-msg">General discussion & study groups</p>
+                            </div>
+                            <span class="online-dot"></span>
+                        </div>
+                    </div>
+                    <div id="direct-messages-list"></div>
+                </div>
+                <div class="p-4 border-t border-gray-200 bg-gray-50">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase mb-3">Students Online</h4>
+                    <div id="online-users" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+            <!-- Chat Area -->
+            <div class="flex-1 flex flex-col bg-gray-50 hidden md:flex" id="chat-area">
+                <div id="chat-header" class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-amber-400 flex items-center justify-center text-white font-bold" id="chat-avatar">#</div>
+                        <div>
+                            <h3 class="font-bold text-gray-900" id="chat-title">Campus Hub</h3>
+                            <p class="text-sm text-green-600 flex items-center gap-1" id="chat-status"><span class="online-dot"></span><span id="online-count">12 students online</span></p>
+                        </div>
+                    </div>
+                    <button onclick="showPage('browse')" class="text-sm text-brand-600 font-medium hover:text-brand-700">Browse Items →</button>
+                </div>
+                <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+                <div class="bg-white border-t border-gray-200 p-4">
+                    <div id="typing-indicator" class="hidden mb-2 px-2">
+                        <span class="text-xs text-gray-500 flex items-center gap-2"><span id="typing-user">Someone</span> is typing<span class="typing-dots"><span></span><span></span><span></span></span></span>
+                    </div>
+                    <form id="message-form" onsubmit="sendMessage(event)" class="flex gap-3">
+                        <input type="text" id="message-input" placeholder="Type a message..." class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none" autocomplete="off">
+                        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center gap-2"><span>Send</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg></button>
+                    </form>
+                </div>
+            </div>
+            <div class="flex-1 flex items-center justify-center bg-gray-50 md:hidden">
+                <div class="text-center p-8"><p class="text-gray-500">Select a conversation to start chatting</p></div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+    // ==================== STATE ====================
+    let currentUser = null;
+    let currentChat = 'community';
+    let onlineUsers = ['Sarah M.', 'Mike T.', 'Jake R.', 'Emma L.', 'David K.', 'Lisa P.', 'Alex S.', 'Roberta H.', 'Jordan', 'Casey', 'Taylor', 'Morgan'];
+    let isTyping = false;
+
+    let items = [
+        { id: 1, title: "Calculus: Early Transcendentals 8th Ed", category: "textbooks", condition: "good", location: "Library, 2nd Floor", donor: "Sarah M.", image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=300&fit=crop", description: "Stewart Calculus textbook. Some highlighting in chapters 1-3, rest is clean. Perfect for MATH 101/102.", posted: "2 hours ago", course: "MATH 101" },
+        { id: 2, title: "MacBook Air M1 (2020)", category: "electronics", condition: "good", location: "Student Center", donor: "Mike T.", image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=300&fit=crop", description: "Upgraded to M2. 8GB RAM, 256GB SSD. Battery health 92%. Includes charger and case. Great for coding classes.", posted: "5 hours ago", course: "CS Major" },
+        { id: 3, title: "Chemistry Lab Goggles & Coat", category: "supplies", condition: "good", location: "Science Building", donor: "Jake R.", image: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=400&h=300&fit=crop", description: "Standard safety goggles and white lab coat (size M). Used for CHEM 201. Both sanitized and ready to go.", posted: "1 day ago", course: "CHEM 201" },
+        { id: 4, title: "Biology 11th Edition - Campbell", category: "textbooks", condition: "new", location: "Dorm Hall B", donor: "Emma L.", image: "https://images.unsplash.com/photo-1589998059171-988d887df646?w=400&h=300&fit=crop", description: "Never used! Bought for BIO 150 but dropped the class. Still in original packaging with access code unused.", posted: "3 hours ago", course: "BIO 150" },
+        { id: 5, title: "Complete AP Physics Notes (1&2)", category: "notes", condition: "good", location: "Library Cafe", donor: "David K.", image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=300&fit=crop", description: "Handwritten notes covering all AP Physics 1 & 2 topics. Includes practice problems and formula sheets. Scored 5 on both exams.", posted: "6 hours ago", course: "PHYS 101/102" },
+        { id: 6, title: "Desk Lamp + Organizer Set", category: "dorm", condition: "good", location: "Dorm Hall C", donor: "Lisa P.", image: "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400&h=300&fit=crop", description: "LED desk lamp with USB charging port and bamboo desk organizer. Moving out of dorm, everything must go!", posted: "12 hours ago", course: "" },
+        { id: 7, title: "iPad Air 4 + Apple Pencil", category: "electronics", condition: "good", location: "Student Center", donor: "Alex S.", image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=300&fit=crop", description: "64GB, Sky Blue. Perfect for digital note-taking. Apple Pencil 2nd gen included. Some minor scratches on back.", posted: "4 hours ago", course: "Design Major" },
+        { id: 8, title: "Graphing Calculator TI-84 Plus", category: "supplies", condition: "fair", location: "Math Building", donor: "Roberta H.", image: "https://images.unsplash.com/photo-1587145820266-a5951eebebb6?w=400&h=300&fit=crop", description: "Works perfectly, just has some scratches on the screen. All functions tested. Essential for calculus and stats.", posted: "2 days ago", course: "MATH/STAT" },
+        { id: 9, title: "Psychology 5th Ed - Myers", category: "textbooks", condition: "good", location: "Library, 3rd Floor", donor: "Jordan", image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=300&fit=crop", description: "Great condition, minimal highlighting. Perfect for PSYC 101. Includes online study guide access.", posted: "1 day ago", course: "PSYC 101" },
+        { id: 10, title: "Mini Fridge (3.2 cu ft)", category: "dorm", condition: "good", location: "Dorm Hall A", donor: "Casey", image: "https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?w=400&h=300&fit=crop", description: "Perfect dorm fridge. Freezer compartment works great. Clean and odor-free. Moving to apartment with full kitchen.", posted: "8 hours ago", course: "" },
+        { id: 11, title: "Organic Chemistry Model Kit", category: "supplies", condition: "new", location: "Science Building", donor: "Morgan", image: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=400&h=300&fit=crop", description: "Never opened! 239 pieces for building molecular structures. Essential for OCHEM 301. Paid $40, yours free with membership.", posted: "3 hours ago", course: "OCHEM 301" },
+        { id: 12, title: "Economics Notes - Micro & Macro", category: "notes", condition: "good", location: "Business Building", donor: "Taylor", image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=400&h=300&fit=crop", description: "Comprehensive typed notes for ECON 201 & 202. Includes graphs, formulas, and exam prep. Helped me get an A in both!", posted: "5 hours ago", course: "ECON 201/202" }
+    ];
+
+    let messages = {
+        community: [
+            { id: 1, user: "Sarah M.", text: "Hey everyone! Just posted my Calc textbook if anyone needs it for MATH 101! 📚", time: "10:30 AM", type: "received" },
+            { id: 2, user: "Mike T.", text: "Thanks Sarah! I'm taking Calc next semester. Sending you a DM.", time: "10:32 AM", type: "received" },
+            { id: 3, user: "Campus Bot", text: "Welcome to Campus Hub! Coordinate meetups at the Library, Student Center, or your dorm. Stay safe! 🎓", time: "10:35 AM", type: "system" },
+            { id: 4, user: "Jake R.", text: "Anyone in Chem 201 need lab goggles? I have an extra set posted.", time: "11:00 AM", type: "received" }
+        ]
+    };
+
+    let directChats = [
+        { id: 'user1', name: "Sarah M.", avatar: "S", lastMessage: "Yes, library tomorrow 2pm works!", time: "2m ago", unread: 1, online: true },
+        { id: 'user2', name: "Mike T.", avatar: "M", lastMessage: "Is the MacBook still available?", time: "1h ago", unread: 0, online: true }
+    ];
+
+    // Bot response database
+    const botResponses = {
+        greetings: ["Hey! 👋", "What's up!", "Hello!", "Hi there!"],
+        thanks: ["You're welcome! 😊", "No problem!", "Happy to help!", "Anytime!"],
+        textbook: ["I saw some textbooks posted! Check the browse tab.", "Sarah has a Calc book, Emma has Bio!", "What course are you looking for?"],
+        calc: ["Sarah posted a Calc textbook! Perfect for MATH 101.", "I used Stewart's Calc book, it's great!"],
+        chem: ["Jake has lab goggles for CHEM 201!", "Check the supplies section for chem stuff."],
+        bio: ["Emma has the Campbell Biology book! Brand new.", "Bio 150 materials are posted."],
+        laptop: ["Mike posted a MacBook Air M1!", "Alex has an iPad with Apple Pencil if you need something for notes."],
+        price: ["Everything is free with your $5/month membership!", "No per-item fees, just the monthly membership."],
+        pickup: ["Library or Student Center work great for meetups!", "I'm usually at the Science Building after 2pm.", "Dorm Hall B lobby is good too."],
+        help: ["What do you need help with?", "Ask away! We're all students here.", "I can try to help! What course?"],
+        default: ["That's cool!", "Nice!", "For sure!", "I feel that.", "Same here!", "Good to know!", "Interesting!", "Thanks for sharing!"]
+    };
+
+    // ==================== INIT ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        renderItems();
+        renderMessages();
+        renderDirectChats();
+        renderOnlineUsers();
+        startBotSimulation();
+    });
+
+    // ==================== NAVIGATION ====================
+    function showPage(pageName) {
+        document.querySelectorAll('[id^="page-"]').forEach(function(page) { page.classList.add('hidden'); });
+        document.getElementById('page-' + pageName).classList.remove('hidden');
+        window.scrollTo(0, 0);
+        if (pageName === 'chat') setTimeout(scrollToBottom, 50);
+    }
+
+    // ==================== AUTH ====================
+    function toggleAuthModal() {
+        var modal = document.getElementById('auth-modal');
+        modal.classList.toggle('hidden');
+    }
+
+    function handleAuth(e) {
+        e.preventDefault();
+        var email = document.getElementById('auth-email').value;
+        currentUser = { email: email, name: email.split('@')[0], avatar: email[0].toUpperCase() };
+        document.getElementById('auth-buttons').classList.add('hidden');
+        document.getElementById('user-menu').classList.remove('hidden');
+        document.getElementById('user-menu').classList.add('flex');
+        document.getElementById('username-display').textContent = currentUser.name;
+        document.getElementById('user-avatar').textContent = currentUser.avatar;
+        toggleAuthModal();
+        addMessage('community', { user: "System", text: currentUser.name + " has joined Campus Hub! Welcome! 🎓", type: "system" });
+        if (onlineUsers.indexOf(currentUser.name) === -1) {
+            onlineUsers.push(currentUser.name);
+            renderOnlineUsers();
+        }
+    }
+
+    function logout() {
+        if (currentUser) {
+            addMessage('community', { user: "System", text: currentUser.name + " has left the chat.", type: "system" });
+            onlineUsers = onlineUsers.filter(function(u) { return u !== currentUser.name; });
+            renderOnlineUsers();
+        }
+        currentUser = null;
+        document.getElementById('auth-buttons').classList.remove('hidden');
+        document.getElementById('user-menu').classList.add('hidden');
+        document.getElementById('user-menu').classList.remove('flex');
+        showPage('home');
+    }
+
+    // ==================== ITEMS ====================
+    function renderItems() {
+        var grid = document.getElementById('items-grid');
+        var searchTerm = (document.getElementById('search-input') && document.getElementById('search-input').value) || '';
+        var category = (document.getElementById('category-filter') && document.getElementById('category-filter').value) || 'all';
+        searchTerm = searchTerm.toLowerCase();
+
+        var filtered = items.filter(function(item) {
+            var matchesSearch = item.title.toLowerCase().indexOf(searchTerm) !== -1 || 
+                              item.description.toLowerCase().indexOf(searchTerm) !== -1 ||
+                              (item.course && item.course.toLowerCase().indexOf(searchTerm) !== -1);
+            var matchesCategory = category === 'all' || item.category === category;
+            return matchesSearch && matchesCategory;
+        });
+
+        grid.innerHTML = filtered.map(function(item) {
+            var courseBadge = item.course ? '<div class="absolute top-3 left-3 bg-brand-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm">' + item.course + '</div>' : '';
+            return '<div class="item-card bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm cursor-pointer" onclick="openItemModal(' + item.id + ')">' +
+                '<div class="relative h-48 overflow-hidden">' +
+                    '<img src="' + item.image + '" alt="' + item.title + '" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">' +
+                    '<div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-semibold text-gray-700 shadow-sm">' + item.condition + '</div>' +
+                    courseBadge +
+                '</div>' +
+                '<div class="p-5">' +
+                    '<div class="flex justify-between items-start mb-2"><h3 class="font-bold text-lg text-gray-900 line-clamp-1">' + item.title + '</h3></div>' +
+                    '<p class="text-gray-500 text-sm mb-4 line-clamp-2">' + item.description + '</p>' +
+                    '<div class="flex items-center justify-between text-sm">' +
+                        '<div class="flex items-center text-gray-600"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>' + item.location + '</div>' +
+                        '<span class="text-brand-600 font-semibold">Free</span>' +
+                    '</div>' +
+                    '<div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">' +
+                        '<div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br from-brand-400 to-amber-400 flex items-center justify-center text-white text-xs font-bold">' + item.donor[0] + '</div><span class="text-sm text-gray-600">' + item.donor + '</span></div>' +
+                        '<span class="text-xs text-gray-400">' + item.posted + '</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    function filterItems() { renderItems(); }
+
+    function openItemModal(itemId) {
+        var item = items.find(function(i) { return i.id === itemId; });
+        if (!item) return;
+        var content = document.getElementById('item-detail-content');
+        var courseBadge = item.course ? '<span class="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">' + item.course + '</span>' : '';
+        content.innerHTML = 
+            '<div class="relative">' +
+                '<button onclick="closeItemModal()" class="absolute top-4 right-4 z-10 w-10 h-10 bg-white/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-lg"><svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>' +
+                '<div class="h-64 md:h-96 overflow-hidden"><img src="' + item.image + '" alt="' + item.title + '" class="w-full h-full object-cover"></div>' +
+                '<div class="p-8">' +
+                    '<div class="flex justify-between items-start mb-4">' +
+                        '<div>' +
+                            '<div class="flex gap-2 mb-2"><span class="inline-block px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-sm font-medium">' + item.category + '</span>' + courseBadge + '</div>' +
+                            '<h2 class="font-display text-3xl font-bold text-gray-900">' + item.title + '</h2>' +
+                        '</div>' +
+                        '<div class="text-right"><div class="text-2xl font-bold text-brand-600">Free</div><div class="text-sm text-gray-500">with $5/mo membership</div></div>' +
+                    '</div>' +
+                    '<div class="grid md:grid-cols-3 gap-6 mb-6 text-sm">' +
+                        '<div class="flex items-center gap-2 text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>' + item.location + '</div>' +
+                        '<div class="flex items-center gap-2 text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Condition: ' + item.condition + '</div>' +
+                        '<div class="flex items-center gap-2 text-gray-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Posted ' + item.posted + '</div>' +
+                    '</div>' +
+                    '<div class="prose max-w-none mb-8"><h3 class="font-bold text-gray-900 mb-2">Description</h3><p class="text-gray-600 leading-relaxed">' + item.description + '</p></div>' +
+                    '<div class="bg-gray-50 rounded-xl p-4 mb-8 flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-400 to-amber-400 flex items-center justify-center text-white font-bold text-lg">' + item.donor[0] + '</div><div><div class="font-semibold text-gray-900">Donated by ' + item.donor + '</div><div class="text-sm text-gray-500">Student since 2024</div></div></div>' +
+                    '<div class="flex gap-4">' +
+                        '<button onclick="startChatWithDonor('' + item.donor + '')" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>Message Student</button>' +
+                        '<button onclick="alert('Membership active! You can claim this item for free.')" class="flex-1 bg-gray-900 hover:bg-gray-800 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Claim Item</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        document.getElementById('item-modal').classList.remove('hidden');
+    }
+
+    function closeItemModal() { document.getElementById('item-modal').classList.add('hidden'); }
+
+    function startChatWithDonor(donorName) {
+        closeItemModal(); showPage('chat');
+        var existingChat = directChats.find(function(c) { return c.name === donorName; });
+        if (existingChat) { switchChat(existingChat.id); }
+        else {
+            var newChat = { id: 'user' + (directChats.length + 1), name: donorName, avatar: donorName[0], lastMessage: "Chat started", time: "Just now", unread: 0, online: true };
+            directChats.unshift(newChat); renderDirectChats(); switchChat(newChat.id);
+        }
+    }
+
+    // ==================== DONATE ====================
+    function handleDonate(e) {
+        e.preventDefault();
+        if (!currentUser) { alert('Please sign in first to list items!'); toggleAuthModal(); return; }
+        var newItem = {
+            id: items.length + 1,
+            title: document.getElementById('donate-title').value,
+            category: document.getElementById('donate-category').value,
+            condition: document.getElementById('donate-condition').value,
+            location: "Campus",
+            donor: currentUser.name,
+            image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=300&fit=crop",
+            description: document.getElementById('donate-desc').value,
+            posted: "Just now",
+            course: document.getElementById('donate-course').value || ""
+        };
+        items.unshift(newItem); renderItems();
+        addMessage('community', { user: "System", text: currentUser.name + " just listed a new item: " + newItem.title + "! 📚", type: "system" });
+        alert('Item listed successfully! Check the chat to see student reactions.'); showPage('chat'); e.target.reset();
+    }
+
+    // ==================== CHAT ====================
+    function renderDirectChats() {
+        var container = document.getElementById('direct-messages-list');
+        container.innerHTML = directChats.map(function(chat) {
+            var onlineIndicator = chat.online ? '<span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>' : '';
+            var unreadBadge = chat.unread > 0 ? '<span class="w-5 h-5 bg-brand-500 text-white text-xs rounded-full flex items-center justify-center">' + chat.unread + '</span>' : '';
+            var activeClass = chat.id === currentChat ? 'bg-brand-50 border-l-4 border-l-brand-500' : '';
+            return '<div onclick="switchChat('' + chat.id + '')" id="chat-' + chat.id + '" class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ' + activeClass + '">' +
+                '<div class="flex items-center gap-3">' +
+                    '<div class="relative"><div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white font-bold">' + chat.avatar + '</div>' + onlineIndicator + '</div>' +
+                    '<div class="flex-1 min-w-0">' +
+                        '<div class="flex justify-between items-center mb-1"><h3 class="font-semibold text-gray-900 truncate">' + chat.name + '</h3><span class="text-xs text-gray-400">' + chat.time + '</span></div>' +
+                        '<p class="text-sm text-gray-500 truncate">' + chat.lastMessage + '</p>' +
+                    '</div>' + unreadBadge +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    function renderOnlineUsers() {
+        var container = document.getElementById('online-users');
+        container.innerHTML = onlineUsers.map(function(user) {
+            return '<div class="flex items-center gap-1 bg-white px-2 py-1 rounded-full border border-gray-200 text-xs"><span class="w-2 h-2 bg-green-500 rounded-full"></span><span class="text-gray-700">' + user + '</span></div>';
+        }).join('');
+        var countEl = document.getElementById('online-count');
+        if (countEl) countEl.textContent = onlineUsers.length + ' students online';
+    }
+
+    function switchChat(chatId) {
+        currentChat = chatId;
+        // Remove active styling from all chats
+        document.querySelectorAll('[id^="chat-"]').forEach(function(el) {
+            el.classList.remove('bg-brand-50', 'border-l-4', 'border-l-brand-500');
+        });
+        // Add active styling to selected chat
+        var selectedEl = document.getElementById('chat-' + chatId);
+        if (selectedEl) selectedEl.classList.add('bg-brand-50', 'border-l-4', 'border-l-brand-500');
+
+        if (chatId === 'community') {
+            document.getElementById('chat-title').textContent = 'Campus Hub';
+            document.getElementById('chat-avatar').textContent = '#';
+            document.getElementById('chat-avatar').className = 'w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-amber-400 flex items-center justify-center text-white font-bold';
+            document.getElementById('chat-status').innerHTML = '<span class="online-dot"></span><span id="online-count">' + onlineUsers.length + ' students online</span>';
+        } else {
+            var chat = directChats.find(function(c) { return c.id === chatId; });
+            if (chat) {
+                document.getElementById('chat-title').textContent = chat.name;
+                document.getElementById('chat-avatar').textContent = chat.avatar;
+                document.getElementById('chat-avatar').className = 'w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white font-bold';
+                document.getElementById('chat-status').innerHTML = chat.online ? 
+                    '<span class="online-dot"></span><span>Online now</span>' : 
+                    '<span class="w-2 h-2 bg-gray-400 rounded-full"></span><span>Offline</span>';
+                chat.unread = 0;
+                renderDirectChats();
+            }
+        }
+        renderMessages();
+    }
+
+    function renderMessages() {
+        var container = document.getElementById('messages-container');
+        var chatMessages = messages[currentChat] || messages.community;
+        container.innerHTML = chatMessages.map(function(msg) {
+            if (msg.type === 'system') {
+                return '<div class="flex justify-center my-4"><span class="bg-gray-200 text-gray-600 text-xs px-4 py-2 rounded-full">' + msg.text + '</span></div>';
+            }
+            var isSent = msg.type === 'sent' || (currentUser && msg.user === currentUser.name);
+            var userLabel = !isSent ? '<div class="text-xs opacity-75 mb-1 font-semibold">' + msg.user + '</div>' : '';
+            var timeClass = isSent ? 'text-orange-100' : 'text-gray-400';
+            return '<div class="chat-bubble ' + (isSent ? 'sent' : 'received') + ' mb-4">' + userLabel + '<div>' + escapeHtml(msg.text) + '</div><div class="text-xs ' + timeClass + ' mt-1 text-right">' + msg.time + '</div></div>';
+        }).join('');
+        scrollToBottom();
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function sendMessage(e) {
+        e.preventDefault();
+        var input = document.getElementById('message-input');
+        var text = input.value.trim();
+        if (!text) return;
+        if (!currentUser) { alert('Please sign in to chat!'); toggleAuthModal(); return; }
+
+        var now = new Date();
+        var timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        var newMsg = { id: Date.now(), user: currentUser.name, text: text, time: timeStr, type: 'sent' };
+
+        if (!messages[currentChat]) messages[currentChat] = [];
+        messages[currentChat].push(newMsg);
+        input.value = '';
+        renderMessages();
+
+        if (currentChat === 'community') {
+            document.getElementById('community-last-msg').textContent = text.substring(0, 30) + (text.length > 30 ? '...' : '');
+            triggerBotReply(text);
+        } else {
+            var chat = directChats.find(function(c) { return c.id === currentChat; });
+            if (chat) {
+                chat.lastMessage = text.substring(0, 30);
+                chat.time = 'Just now';
+                renderDirectChats();
+                triggerDirectReply(currentChat, text);
+            }
+        }
+    }
+
+    // ==================== SMART BOT REPLIES ====================
+    function triggerBotReply(userText) {
+        var lowerText = userText.toLowerCase();
+        var reply = "";
+        var delay = 1000 + Math.random() * 1500;
+
+        // Determine response category
+        if (lowerText.match(/\b(hi|hello|hey|yo|what\'s up)\b/)) {
+            reply = pickRandom(botResponses.greetings);
+        } else if (lowerText.match(/\b(thanks|thank you|thx|appreciate)\b/)) {
+            reply = pickRandom(botResponses.thanks);
+        } else if (lowerText.match(/\b(textbook|book|reading|chapter)\b/)) {
+            reply = pickRandom(botResponses.textbook);
+        } else if (lowerText.match(/\b(calc|calculus|math|derivative|integral)\b/)) {
+            reply = pickRandom(botResponses.calc);
+        } else if (lowerText.match(/\b(chem|chemistry|lab|molecule|periodic)\b/)) {
+            reply = pickRandom(botResponses.chem);
+        } else if (lowerText.match(/\b(bio|biology|cell|dna|organism)\b/)) {
+            reply = pickRandom(botResponses.bio);
+        } else if (lowerText.match(/\b(laptop|macbook|computer|ipad|device)\b/)) {
+            reply = pickRandom(botResponses.laptop);
+        } else if (lowerText.match(/\b(price|cost|fee|money|dollar|\$)\b/)) {
+            reply = pickRandom(botResponses.price);
+        } else if (lowerText.match(/\b(pickup|meet|where|location|campus|library)\b/)) {
+            reply = pickRandom(botResponses.pickup);
+        } else if (lowerText.match(/\b(help|question|how|what|when|can you)\b/)) {
+            reply = pickRandom(botResponses.help);
+        } else {
+            reply = pickRandom(botResponses.default);
+        }
+
+        // Show typing indicator
+        showTypingIndicator();
+
+        setTimeout(function() {
+            hideTypingIndicator();
+            var botName = pickRandom(onlineUsers.filter(function(u) { return u !== currentUser?.name; })) || "Alex";
+            addMessage('community', { user: botName, text: reply, type: 'received' });
+            document.getElementById('community-last-msg').textContent = reply.substring(0, 30) + (reply.length > 30 ? '...' : '');
+        }, delay);
+    }
+
+    function triggerDirectReply(chatId, userText) {
+        var chat = directChats.find(function(c) { return c.id === chatId; });
+        if (!chat || !chat.online) return;
+
+        var lowerText = userText.toLowerCase();
+        var reply = "";
+        var delay = 1500 + Math.random() * 2000;
+
+        if (lowerText.match(/\b(available|still|have|got)\b/)) {
+            reply = "Yes, it's still available! When works for you to pick it up?";
+        } else if (lowerText.match(/\b(pickup|meet|time|when|tomorrow|today)\b/)) {
+            reply = "I'm free tomorrow afternoon or Saturday morning. What works for you?";
+        } else if (lowerText.match(/\b(price|cost|fee|money|\$)\b/)) {
+            reply = "It's free! Your $5/month membership covers everything.";
+        } else if (lowerText.match(/\b(where|location|campus|building|dorm)\b/)) {
+            reply = "I'm usually at the " + (chat.name === "Sarah M." ? "library 2nd floor" : "student center") + ".";
+        } else if (lowerText.match(/\b(condition|quality|shape|look)\b/)) {
+            reply = "It's in good condition! Some normal wear but works perfectly.";
+        } else {
+            reply = "Sounds good! Let me know what else you need.";
+        }
+
+        setTimeout(function() {
+            if (!messages[chatId]) messages[chatId] = [];
+            var now = new Date();
+            var timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messages[chatId].push({ id: Date.now(), user: chat.name, text: reply, time: timeStr, type: 'received' });
+
+            if (currentChat === chatId) {
+                renderMessages();
+            } else {
+                chat.unread++;
+                chat.lastMessage = reply.substring(0, 30);
+                chat.time = 'Just now';
+                renderDirectChats();
+            }
+        }, delay);
+    }
+
+    function pickRandom(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function showTypingIndicator() {
+        var indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            var user = pickRandom(onlineUsers.filter(function(u) { return u !== currentUser?.name; })) || "Someone";
+            document.getElementById('typing-user').textContent = user;
+            indicator.classList.remove('hidden');
+        }
+    }
+
+    function hideTypingIndicator() {
+        var indicator = document.getElementById('typing-indicator');
+        if (indicator) indicator.classList.add('hidden');
+    }
+
+    // ==================== BOT SIMULATION ====================
+    function startBotSimulation() {
+        // Random messages every 15-25 seconds
+        setInterval(function() {
+            if (Math.random() > 0.5 && currentChat === 'community') {
+                var randomMessages = [
+                    "Anyone need notes for ECON 202? I have extras!",
+                    "Just found my old OChem model kit, posting it now.",
+                    "Is the library open late tonight? Need to study.",
+                    "Thanks for the calc book Sarah! Lifesaver 🙏",
+                    "Who's taking PSYC 101 next semester?",
+                    "The $5 membership is so worth it, saved like $200 on books.",
+                    "Anyone want to form a study group for Chem?",
+                    "Just moved into Dorm Hall C, anyone nearby?",
+                    "Does anyone have a spare TI-84? Mine broke 😭",
+                    "Shoutout to whoever posted the Bio notes, they're amazing!",
+                    "Meeting at the library cafe in 10 for study session!",
+                    "Is the MacBook still available Mike?",
+                    "Just listed my mini fridge, come get it!",
+                    "How late is the student center open?",
+                    "Best platform ever, my wallet thanks you all 💯"
+                ];
+                var botName = pickRandom(onlineUsers.filter(function(u) { return u !== currentUser?.name; })) || "Alex";
+                var msg = pickRandom(randomMessages);
+                addMessage('community', { user: botName, text: msg, type: 'received' });
+                document.getElementById('community-last-msg').textContent = msg.substring(0, 30) + '...';
+            }
+        }, 18000);
+
+        // Users joining/leaving
+        setInterval(function() {
+            if (Math.random() > 0.7) {
+                var action = Math.random() > 0.5 ? 'join' : 'leave';
+                var user = pickRandom(onlineUsers);
+                if (user && user !== (currentUser && currentUser.name)) {
+                    if (action === 'join') {
+                        addMessage('community', { user: "System", text: user + " has joined Campus Hub! 👋", type: "system" });
+                    } else if (onlineUsers.length > 5) {
+                        onlineUsers = onlineUsers.filter(function(u) { return u !== user; });
+                        addMessage('community', { user: "System", text: user + " has left the chat.", type: "system" });
+                        renderOnlineUsers();
+                    }
+                }
+            }
+        }, 25000);
+    }
+
+    function addMessage(chatId, msg) {
+        if (!messages[chatId]) messages[chatId] = [];
+        var now = new Date();
+        var timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        messages[chatId].push({ id: Date.now(), user: msg.user, text: msg.text, time: timeStr, type: msg.type });
+        if (currentChat === chatId) { renderMessages(); }
+    }
+
+    function scrollToBottom() {
+        var container = document.getElementById('messages-container');
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeItemModal();
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+    });
+    </script>
+</body>
+</html>
